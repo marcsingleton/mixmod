@@ -98,7 +98,7 @@ def mle_gamma(data, param_fix={}, expt=None, initial=None):
             # Half and double endpoints until a sign difference
             lower = initial['a'] / 2
             upper = initial['a'] * 2
-            while np.sign(lower) != np.sign(upper):
+            while np.sign(gamma_shape(lower)) == np.sign(gamma_shape(upper)):
                 lower /= 2
                 upper *= 2
             a = opt.brentq(gamma_shape, lower, upper)
@@ -121,7 +121,7 @@ def mle_laplace(data, param_fix={}, expt=None, **kwargs):
     # Scale
     if 'scale' not in param_fix:
         e = expt.sum()
-        d_abserr = abs(data)
+        d_abserr = (expt * abs(data)).sum()
         scale = d_abserr / e
         ests['scale'] = scale
 
