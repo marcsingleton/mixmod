@@ -4,7 +4,6 @@ import numpy as np
 from . import estimate
 from random import random
 from scipy.stats import rv_continuous
-from sklearn.cluster import k_means
 
 
 def get_loglikelihood(data, dists, params, params_fix, weights):
@@ -49,26 +48,30 @@ class MixtureModel(rv_continuous):
         self.params = [{} for _ in range(len(self.dists))] if params is None else params.copy()
         self.params_fix = [{} for _ in range(len(self.dists))] if params_fix is None else params_fix.copy()
         self.weights = np.full(len(self.dists), 1 / len(self.dists)) if weights is None else weights.copy()
-
-        # Fit metadata
         self.converged = False
+
+    def __repr__(self):
+        pad = 13 * ' '
+        dists = [dist.name for dist in self.dists]
+        return f'MixtureModel(dists={dists},\n'\
+               f'{pad}params={self.params},\n'\
+               f'{pad}params_fix={self.params_fix},\n'\
+               f'{pad}weights={self.weights},\n'\
+               f'{pad}name={self.name})'
 
     def clear(self):
         self.params = [{} for _ in range(len(self.dists))]
         self.weights = np.full(len(self.dists), 1 / len(self.dists))
+        self.converged = False
 
     def fit(self, data, max_iter=250, tol=1E-3, verbose=False):
-        # Generate a random set of clusters to provide initial estimates
-        sample = np.random.choice(data, int(len(data) * random()))
-        _, labels, _ = k_means(sample.reshape(-1, 1), len(self.dists))  # k_means expects column vector
-        clusters = [sample[labels == i] for i in range(len(self.dists))]
-
         # Initialize params, using temporary values to preserve originals in case of error
         weights_opt = self.weights.copy()
         params_opt = []
-        for cluster, dist, param, param_fix in zip(clusters, self.dists, self.params, self.params_fix):
+        for dist, param, param_fix in zip(self.dists, self.params, self.params_fix):
+            sample = np.random.choice(data, max(1, int(len(data) * random())))  # Use random sample to initialize
             cfe = estimate.cfes[dist.name]  # Get closed-form estimator
-            param_init = {**cfe(cluster, param_fix=param_fix), **param}  # Replace random initials with given initials
+            param_init = {**cfe(sample, param_fix=param_fix), **param}  # Overwrite random initials with any provided initials
             params_opt.append(param_init)
 
         for i in range(1, max_iter + 1):
@@ -82,14 +85,16 @@ class MixtureModel(rv_continuous):
             for dist, param_opt, param_fix, expt in zip(self.dists, params_opt, self.params_fix, expts):
                 mle = estimate.mles[dist.name]  # Get MLE function
                 opt = mle(data, param_fix=param_fix, expt=expt, initial=param_opt)  # Get updated parameters
-                param_opt.update(opt)
+                param_opt.update(opt)  # Update is dict built-in method
             ll = get_loglikelihood(data, self.dists, params_opt, self.params_fix, weights_opt)
 
             # Print output
             if verbose:
                 print(i, ll, sep=': ')
 
-            # Test convergence
+            # Test numerical exception then convergence
+            elif np.isnan(ll) or np.isinf(ll):
+                break
             if ll - ll0 < tol:
                 self.converged = True
                 break
@@ -98,8 +103,6 @@ class MixtureModel(rv_continuous):
         self.weights = weights_opt.tolist()
 
         return i, ll
-        self.ll = ll
-        self.n_iter = i
 
     def loglikelihood(self, data):
         return get_loglikelihood(data, self.dists, self.params, self.params_fix, self.weights)
