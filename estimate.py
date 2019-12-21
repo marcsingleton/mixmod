@@ -115,14 +115,33 @@ def mle_gamma(data, param_fix={}, expt=None, initial=None):
 
 
 def mle_laplace(data, param_fix={}, expt=None, **kwargs):
-    expt = np.full(len(data), 1) if expt is None else expt
+    expt = np.full(len(data), 1) if expt is None else expt[data.argsort()]  # Sort expt with data
+    data = np.sort(data)  # Re-assign using np.sort() to prevent in-place sort
     ests = {}
+
+    # Loc
+    if 'loc' not in param_fix:
+        # Find index of first point greater than center of mass
+        cm = expt.sum() / 2
+        e_cum = expt.cumsum()
+        idx = np.argmax(e_cum > cm)
+
+        # Linear interpolation as needed
+        if data[idx] == data[idx - 1]:
+            loc = data[idx]
+        else:
+            m = (e_cum[idx] - e_cum[idx - 1]) / (data[idx] - data[idx - 1])
+            b = e_cum[idx] - m * data[idx]
+            loc = (cm - b) / m
+        ests['loc'] = loc
+    else:
+        loc = param_fix['loc']
 
     # Scale
     if 'scale' not in param_fix:
         e = expt.sum()
-        d_abserr = (expt * abs(data)).sum()
-        scale = d_abserr / e
+        d_abserr = abs(data - loc)
+        scale = (expt * d_abserr).sum() / e
         ests['scale'] = scale
 
     return ests
