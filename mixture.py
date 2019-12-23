@@ -23,7 +23,7 @@ def get_cdfstack(data, dists, params, params_fix, weights):
     """Return array of cdf components evaluated at data."""
 
     model_params = zip(dists, params, params_fix, weights)
-    ps = [weight * dist.pdf(data, **param, **param_fix) for dist, param, param_fix, weight in model_params]
+    ps = [weight * dist.cdf(data, **param, **param_fix) for dist, param, param_fix, weight in model_params]
     return np.stack(ps, axis=0)  # Stack results
 
 
