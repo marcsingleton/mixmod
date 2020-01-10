@@ -93,7 +93,7 @@ class MixtureModel(rv_continuous):
                 print(i, ll, sep=': ')
 
             # Test numerical exception then convergence
-            elif np.isnan(ll) or np.isinf(ll):
+            if np.isnan(ll) or np.isinf(ll):
                 break
             if ll - ll0 < tol:
                 self.converged = True
