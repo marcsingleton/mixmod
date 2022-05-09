@@ -1,7 +1,7 @@
 """Fit mixture models with arbitrary components to data."""
 
 import numpy as np
-from src.pymix import estimate
+from src.mixmod import estimate
 from random import random
 from scipy.stats import rv_continuous
 
