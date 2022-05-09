@@ -4,7 +4,6 @@ from random import random
 
 import numpy as np
 from . import estimate
-from scipy.stats import rv_continuous
 
 
 def _get_loglikelihood(data, dists, params, params_fix, weights):
@@ -115,7 +114,7 @@ def _get_pdfstack(data, dists, params, params_fix, weights):
     return np.stack(ps, axis=0)
 
 
-class MixtureModel(rv_continuous):
+class MixtureModel:
     """Class for performing calculations with mixture models.
 
     Parameters
@@ -139,16 +138,12 @@ class MixtureModel(rv_continuous):
         Name of mixture model for display when printing.
     """
     def __init__(self, dists, params=None, params_fix=None, weights=None, name='mixture'):
-        # Initialize base class
-        super().__init__(name=name)
-        self.a = min([dist.a for dist in dists])
-        self.b = max([dist.b for dist in dists])
-
         # Model parameters
         self.dists = dists.copy()
         self.params = [{} for _ in range(len(self.dists))] if params is None else params.copy()
         self.params_fix = [{} for _ in range(len(self.dists))] if params_fix is None else params_fix.copy()
         self.weights = np.full(len(self.dists), 1 / len(self.dists)) if weights is None else weights.copy()
+        self.name = name
         self.converged = False
 
     def __repr__(self):
@@ -316,9 +311,3 @@ class MixtureModel(rv_continuous):
             dist, param, param_fix, weight = list(model_params)[component]
             ps = weight * dist.pdf(x, **param_fix, **param)
             return ps
-
-    def _cdf(self, x):
-        return self.cdf_components(x)
-
-    def _pdf(self, x):
-        return self.pdf_components(x)
