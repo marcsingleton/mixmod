@@ -280,8 +280,8 @@ class MixtureModel:
         """
         return _get_posterior(data, self.dists, self.params, self.params_fix, self.weights)
 
-    def cdf_components(self, x, component='sum'):
-        """Return cdf evaluated at data.
+    def cdf(self, x, component='sum'):
+        """Return cdf evaluated at x.
 
         Parameters
         ----------
@@ -314,8 +314,8 @@ class MixtureModel:
             ps = weight * dist.cdf(x, **param_fix, **param)
             return ps
 
-    def pdf_components(self, x, component='sum'):
-        """Return pdf evaluated at data.
+    def pdf(self, x, component='sum'):
+        """Return pdf evaluated at x.
 
         Parameters
         ----------
