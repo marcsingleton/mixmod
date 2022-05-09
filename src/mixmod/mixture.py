@@ -138,11 +138,33 @@ class MixtureModel:
         Name of mixture model for display when printing.
     """
     def __init__(self, dists, params=None, params_fix=None, weights=None, name='mixture'):
-        # Model parameters
+        # Check arguments
+        if params is None:
+            params = [{} for _ in range(len(dists))]
+        elif len(params) != len(dists):
+            raise RuntimeError('len(params) does not equal len(dists)')
+        else:
+            params = params.copy()
+
+        if params_fix is None:
+            params_fix = [{} for _ in range(len(dists))]
+        elif len(params_fix) != len(dists):
+            raise RuntimeError('len(params_fix) does not equal len(dists)')
+        else:
+            params_fix = params_fix.copy()
+
+        if weights is None:
+            weights = np.full(len(dists), 1 / len(dists))
+        elif len(weights) != len(dists):
+            raise RuntimeError('len(weights) does not equal len(dists)')
+        else:
+            weights = weights.copy()
+
+        # Set instance attributes
         self.dists = dists.copy()
-        self.params = [{} for _ in range(len(self.dists))] if params is None else params.copy()
-        self.params_fix = [{} for _ in range(len(self.dists))] if params_fix is None else params_fix.copy()
-        self.weights = np.full(len(self.dists), 1 / len(self.dists)) if weights is None else weights.copy()
+        self.params = params
+        self.params_fix = params_fix
+        self.weights = weights
         self.name = name
         self.converged = False
 
@@ -169,8 +191,8 @@ class MixtureModel:
         data: 1-D ndarray
             Data to fit mixture model.
         max_iter: int
-            Maximum number of iterations.
-        tol: float
+            Maximum number of iterations. Must be at least 1.
+        tol: positive int or float
             Optimization stops if the difference between log-likelihoods is less
             than tol between subsequent iterations.
         verbose: bool
@@ -182,6 +204,12 @@ class MixtureModel:
             The number of iterations before a stop conditions was reached, and
             the final log-likelihood.
         """
+        # Check arguments
+        if max_iter < 1:
+            raise ValueError('max_iter must be at least 1')
+        if tol <= 0:
+            raise ValueError('tol must be positive')
+
         # Initialize params, using temporary values to preserve originals in case of error
         weights_opt = self.weights.copy()
         params_opt = []
@@ -212,7 +240,7 @@ class MixtureModel:
             # Test numerical exception then convergence
             if np.isnan(ll) or np.isinf(ll):
                 break
-            if ll - ll0 < tol:
+            if abs(ll - ll0) < tol:
                 self.converged = True
                 break
 
@@ -270,6 +298,10 @@ class MixtureModel:
         ps: ndarray
             cdf evaluated at data.
         """
+        # Check arguments
+        if (component not in ['sum', 'all']) or isinstance(int, component):
+            raise ValueError('component is not "sum", "all" or int')
+
         if component == 'sum':
             ps = _get_cdfstack(x, self.dists, self.params, self.params_fix, self.weights)
             return ps.sum(axis=0)
@@ -300,6 +332,10 @@ class MixtureModel:
         ps: ndarray
             pdf evaluated at data.
         """
+        # Check arguments
+        if (component not in ['sum', 'all']) or isinstance(int, component):
+            raise ValueError('component is not "sum", "all" or int')
+
         if component is 'sum':
             ps = _get_pdfstack(x, self.dists, self.params, self.params_fix, self.weights)
             return ps.sum(axis=0)
