@@ -133,6 +133,9 @@ class MixtureModel:
     correspondence between the two is unambiguous. Likewise, if params_fix is
     given, its length must also match the length of components.
 
+    A RuntimeError is raised if the same parameter is defined in corresponding
+    params and params_fix dicts.
+
     Though the components are effectively instances of rv_continuous as defined
     in the scipy stats module, this condition is not formally checked. As long
     as each component implements a pdf and cdf method, most of the defined
@@ -157,7 +160,6 @@ class MixtureModel:
     name: str
         Name of mixture model for display when printing.
     """
-
     def __init__(self, components, params=None, params_fix=None, weights=None, name='mixture'):
         # Check arguments
         if params is None:
@@ -169,6 +171,10 @@ class MixtureModel:
             params_fix = [{} for _ in range(len(components))]
         elif len(params_fix) != len(components):
             raise RuntimeError('len(params_fix) does not equal len(components)')
+
+        for param, param_fix in zip(params, params_fix):
+            if set(param) | set(param_fix):
+                raise RuntimeError('Corresponding dicts in params and params_fix define the same parameter')
 
         if weights is None:
             weights = [1 / len(components) for _ in range(len(components))]
