@@ -164,25 +164,19 @@ class MixtureModel:
             params = [{} for _ in range(len(components))]
         elif len(params) != len(components):
             raise RuntimeError('len(params) does not equal len(components)')
-        else:
-            params = params.copy()
 
         if params_fix is None:
             params_fix = [{} for _ in range(len(components))]
         elif len(params_fix) != len(components):
             raise RuntimeError('len(params_fix) does not equal len(components)')
-        else:
-            params_fix = params_fix.copy()
 
         if weights is None:
             weights = [1 / len(components) for _ in range(len(components))]
         elif len(weights) != len(components):
             raise RuntimeError('len(weights) does not equal len(components)')
-        else:
-            weights = weights.copy()
 
         # Set instance attributes
-        self.components = components.copy()
+        self.components = components
         self.params = params
         self.params_fix = params_fix
         self.weights = weights
