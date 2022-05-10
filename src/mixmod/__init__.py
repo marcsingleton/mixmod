@@ -1,3 +1,3 @@
-from mixture import MixtureModel
+from .mixture import MixtureModel
 
 __version__ = '0.0.3'
