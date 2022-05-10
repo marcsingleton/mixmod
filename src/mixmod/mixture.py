@@ -30,7 +30,8 @@ def _get_loglikelihood(data, dists, params, params_fix, weights):
     p = 0
     model_params = zip(dists, params, params_fix, weights)
     for dist, param, param_fix, weight in model_params:
-        p += weight * dist.pdf(data, **param_fix, **param)  # This step is not log b/c we are summing the contribution of each component
+        p += weight * dist.pdf(data, **param_fix,
+                               **param)  # This step is not log b/c we are summing the contribution of each component
     return np.log(p).sum()
 
 
@@ -117,26 +118,47 @@ def _get_pdfstack(data, dists, params, params_fix, weights):
 class MixtureModel:
     """Class for performing calculations with mixture models.
 
+    params and params_fix are lists of dicts where each dict contains the names
+    of the parameters of the components of the mixture model with their
+    associated values. "Free" variables are specified in the params dicts, and
+    "fixed" variables are specified in the params_fix dicts. The fit method
+    updates free parameters only, that is, any parameters given in params_fix
+    are not updated.
+
+    The default value of a parameter, if defined, is used if that parameter is
+    not in the params or params_fix dict. Once fit is called, the params dicts
+    are populated with any parameters not defined in the corresponding
+    params_fix dict.
+
+    If params is given, its length must match the length of dists, so the
+    correspondence between the two is unambiguous. Likewise, if params_fix is
+    given, its length must also match the length of dists.
+
+    Though the components are effectively instances of rv_continuous as defined
+    in the scipy stats module, this condition is not formally checked. As long
+    as each dist implements a pdf and cdf method, most of the defined methods
+    will execute correctly. The major exception is the fit method. First, it
+    requires the dists have name attributes since they are used to select the
+    correct estimator functions. These estimator functions also use the
+    parameter names as defined in the scipy stats module to set the keys in
+    each param dict. Thus, the fit method is only implemented for the
+    distributions with estimators defined in estimate.py.
+
     Parameters
     ----------
     dists: list of rv_continuous instances
-        Components of mixture model. Formally, the components are rv_continuous
-        instances as defined in the scipy stats module. However, for most
-        calculations only a pdf and cdf method are needed. The fit method
-        requires rv_continuous instances since it uses their name attribute to
-        select the correct estimator functions. It also uses the parameter
-        names for each distribution as defined in the scipy stats module to set
-        the correct keys in each param dict.
+        Components of mixture model.
     params: list of dicts
-        Free parameters of components of mixture model.
+        Initial values for the free parameters of components of mixture model.
     params_fix: list of dicts
         Fixed parameters of components of mixture model.
-    weights:
-        Initial weights of components of model. Uses uniform distribution if
+    weights: list of floats
+        Initial weights of components of model. Uses a uniform distribution if
         None.
     name: str
         Name of mixture model for display when printing.
     """
+
     def __init__(self, dists, params=None, params_fix=None, weights=None, name='mixture'):
         # Check arguments
         if params is None:
@@ -184,7 +206,10 @@ class MixtureModel:
         self.converged = False
 
     def fit(self, data, max_iter=250, tol=1E-3, verbose=False):
-        """Fit components of mixture model with EM algorithm.
+        """Fit the free parameters of the mixture model with EM algorithm.
+
+        Only the "free" parameters are fit. Any parameters in the params_fix
+        dicts are not changed.
 
         Parameters
         ----------
