@@ -175,7 +175,7 @@ class MixtureModel:
             params_fix = params_fix.copy()
 
         if weights is None:
-            weights = np.full(len(components), 1 / len(components))
+            weights = [1 / len(components) for _ in range(len(components))]
         elif len(weights) != len(components):
             raise RuntimeError('len(weights) does not equal len(components)')
         else:
@@ -201,7 +201,7 @@ class MixtureModel:
     def clear(self):
         """Reset free parameters and weights of mixture model."""
         self.params = [{} for _ in range(len(self.components))]
-        self.weights = np.full(len(self.components), 1 / len(self.components))
+        self.weights = [1 / len(self.components) for _ in range(len(self.components))]
         self.converged = False
 
     def fit(self, data, max_iter=250, tol=1E-3, verbose=False):
