@@ -1,7 +1,5 @@
 """Class and functions for performing calculations with mixture models."""
 
-from random import random
-
 import numpy as np
 from . import estimate
 
@@ -210,6 +208,8 @@ class MixtureModel:
         Only the "free" parameters are fit. Any parameters in the params_fix
         dicts are not changed.
 
+        Parameters given in params dicts are used as initial estimates.
+
         Parameters
         ----------
         data: 1-D ndarray
@@ -238,9 +238,8 @@ class MixtureModel:
         weights_opt = self.weights.copy()
         params_opt = []
         for component, param, param_fix in zip(self.components, self.params, self.params_fix):
-            sample = np.random.choice(data, max(1, int(len(data) * random())))  # Use random sample to initialize
             cfe = estimate.cfes[component.name]  # Get closed-form estimator
-            param_init = {**cfe(sample, param_fix=param_fix), **param}  # Overwrite random initials with any provided initials
+            param_init = {**cfe(data, param_fix=param_fix), **param}  # Overwrite random initials with any provided initials
             params_opt.append(param_init)
 
         for i in range(1, max_iter + 1):
