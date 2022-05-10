@@ -1,7 +1,7 @@
 """Class and functions for performing calculations with mixture models."""
 
 import numpy as np
-from . import estimate
+from . import estimators
 
 
 def _get_loglikelihood(data, components, params, params_fix, weights):
@@ -142,7 +142,7 @@ class MixtureModel:
     to select the correct estimator functions. These estimator functions also
     use the parameter names as defined in the scipy stats module to set the
     keys in each param dict. Thus, the fit method is only implemented for the
-    distributions with estimators defined in estimate.py.
+    distributions with estimators defined in estimators.py.
 
     Parameters
     ----------
@@ -238,7 +238,7 @@ class MixtureModel:
         weights_opt = self.weights.copy()
         params_opt = []
         for component, param, param_fix in zip(self.components, self.params, self.params_fix):
-            cfe = estimate.cfes[component.name]  # Get closed-form estimator
+            cfe = estimators.cfes[component.name]  # Get closed-form estimator
             param_init = {**cfe(data, param_fix=param_fix), **param}  # Overwrite random initials with any provided initials
             params_opt.append(param_init)
 
@@ -251,7 +251,7 @@ class MixtureModel:
 
             # Maximization
             for component, param_opt, param_fix, expt in zip(self.components, params_opt, self.params_fix, expts):
-                mle = estimate.mles[component.name]  # Get MLE function
+                mle = estimators.mles[component.name]  # Get MLE function
                 opt = mle(data, param_fix=param_fix, expt=expt, initial=param_opt)  # Get updated parameters
                 param_opt.update(opt)
             ll = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt)

@@ -1,8 +1,9 @@
 """Functions for estimators of distributions with weighted data."""
 
+from math import exp, log, pi, sqrt
+
 import numpy as np
 import scipy.optimize as opt
-from math import exp, log, pi, sqrt
 from scipy.special import digamma
 
 
