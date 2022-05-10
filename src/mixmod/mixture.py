@@ -6,14 +6,14 @@ import numpy as np
 from . import estimate
 
 
-def _get_loglikelihood(data, dists, params, params_fix, weights):
+def _get_loglikelihood(data, components, params, params_fix, weights):
     """Return log-likelihood of data according to mixture model.
 
     Parameters
     ----------
     data: 1-D ndarray
         Values at which to evaluate components of mixture model.
-    dists: list of rv_continuous instances
+    components: list of rv_continuous instances
         Components of mixture model.
     params: list of dicts
         Free parameters of components of mixture model.
@@ -28,21 +28,20 @@ def _get_loglikelihood(data, dists, params, params_fix, weights):
         Log-likelihood of data.
     """
     p = 0
-    model_params = zip(dists, params, params_fix, weights)
-    for dist, param, param_fix, weight in model_params:
-        p += weight * dist.pdf(data, **param_fix,
-                               **param)  # This step is not log b/c we are summing the contribution of each component
+    model_params = zip(components, params, params_fix, weights)
+    for component, param, param_fix, weight in model_params:
+        p += weight * component.pdf(data, **param_fix, **param)  # This step is not log b/c we are summing the contribution of each component
     return np.log(p).sum()
 
 
-def _get_posterior(data, dists, params, params_fix, weights):
+def _get_posterior(data, components, params, params_fix, weights):
     """Return array of posterior probabilities of data for each component of mixture model.
 
     Parameters
     ----------
     data: 1-D ndarray
         Values at which to evaluate components of mixture model.
-    dists: list of rv_continuous instances
+    components: list of rv_continuous instances
         Components of mixture model.
     params: list of dicts
         Free parameters of components of mixture model.
@@ -55,20 +54,20 @@ def _get_posterior(data, dists, params, params_fix, weights):
     -------
     ps: ndarray
         Array of posterior probabilities of data for each component of mixture
-        model. Shape is (len(data), len(dists)).
+        model. Shape is (len(data), len(components)).
     """
-    ps = _get_pdfstack(data, dists, params, params_fix, weights)
+    ps = _get_pdfstack(data, components, params, params_fix, weights)
     return ps / ps.sum(axis=0)  # Normalize stack to yield posterior
 
 
-def _get_cdfstack(data, dists, params, params_fix, weights):
+def _get_cdfstack(data, components, params, params_fix, weights):
     """Return array of cdfs evaluated at data for each component of mixture model.
 
     Parameters
     ----------
     data: 1-D ndarray
         Values at which to evaluate components of mixture model.
-    dists: list of rv_continuous instances
+    components: list of rv_continuous instances
         Components of mixture model.
     params: list of dicts
         Free parameters of components of mixture model.
@@ -81,21 +80,21 @@ def _get_cdfstack(data, dists, params, params_fix, weights):
     -------
     ps: ndarray
         Array of cdfs evaluated at data for each component of mixture model.
-        Shape is (len(data), len(dists)).
+        Shape is (len(data), len(components)).
     """
-    model_params = zip(dists, params, params_fix, weights)
-    ps = [weight * dist.cdf(data, **param, **param_fix) for dist, param, param_fix, weight in model_params]
+    model_params = zip(components, params, params_fix, weights)
+    ps = [weight * component.cdf(data, **param, **param_fix) for component, param, param_fix, weight in model_params]
     return np.stack(ps, axis=0)
 
 
-def _get_pdfstack(data, dists, params, params_fix, weights):
+def _get_pdfstack(data, components, params, params_fix, weights):
     """Return array of pdfs evaluated at data for each component of mixture model.
 
     Parameters
     ----------
     data: 1-D ndarray
         Values at which to evaluate components of mixture model.
-    dists: list of rv_continuous instances
+    components: list of rv_continuous instances
         Components of mixture model.
     params: list of dicts
         Free parameters of components of mixture model.
@@ -108,10 +107,10 @@ def _get_pdfstack(data, dists, params, params_fix, weights):
     -------
     ps: ndarray
         Array of pdfs evaluated at data for each component of mixture model.
-        Shape is (len(data), len(dists)).
+        Shape is (len(data), len(components)).
     """
-    model_params = zip(dists, params, params_fix, weights)
-    ps = [weight * dist.pdf(data, **param, **param_fix) for dist, param, param_fix, weight in model_params]
+    model_params = zip(components, params, params_fix, weights)
+    ps = [weight * component.pdf(data, **param, **param_fix) for component, param, param_fix, weight in model_params]
     return np.stack(ps, axis=0)
 
 
@@ -130,23 +129,23 @@ class MixtureModel:
     are populated with any parameters not defined in the corresponding
     params_fix dict.
 
-    If params is given, its length must match the length of dists, so the
+    If params is given, its length must match the length of components, so the
     correspondence between the two is unambiguous. Likewise, if params_fix is
-    given, its length must also match the length of dists.
+    given, its length must also match the length of components.
 
     Though the components are effectively instances of rv_continuous as defined
     in the scipy stats module, this condition is not formally checked. As long
-    as each dist implements a pdf and cdf method, most of the defined methods
-    will execute correctly. The major exception is the fit method. First, it
-    requires the dists have name attributes since they are used to select the
-    correct estimator functions. These estimator functions also use the
-    parameter names as defined in the scipy stats module to set the keys in
-    each param dict. Thus, the fit method is only implemented for the
+    as each component implements a pdf and cdf method, most of the defined
+    methods will execute correctly. The major exception is the fit method.
+    First, it requires the components have name attributes since they are used
+    to select the correct estimator functions. These estimator functions also
+    use the parameter names as defined in the scipy stats module to set the
+    keys in each param dict. Thus, the fit method is only implemented for the
     distributions with estimators defined in estimate.py.
 
     Parameters
     ----------
-    dists: list of rv_continuous instances
+    components: list of rv_continuous instances
         Components of mixture model.
     params: list of dicts
         Initial values for the free parameters of components of mixture model.
@@ -159,31 +158,31 @@ class MixtureModel:
         Name of mixture model for display when printing.
     """
 
-    def __init__(self, dists, params=None, params_fix=None, weights=None, name='mixture'):
+    def __init__(self, components, params=None, params_fix=None, weights=None, name='mixture'):
         # Check arguments
         if params is None:
-            params = [{} for _ in range(len(dists))]
-        elif len(params) != len(dists):
-            raise RuntimeError('len(params) does not equal len(dists)')
+            params = [{} for _ in range(len(components))]
+        elif len(params) != len(components):
+            raise RuntimeError('len(params) does not equal len(components)')
         else:
             params = params.copy()
 
         if params_fix is None:
-            params_fix = [{} for _ in range(len(dists))]
-        elif len(params_fix) != len(dists):
-            raise RuntimeError('len(params_fix) does not equal len(dists)')
+            params_fix = [{} for _ in range(len(components))]
+        elif len(params_fix) != len(components):
+            raise RuntimeError('len(params_fix) does not equal len(components)')
         else:
             params_fix = params_fix.copy()
 
         if weights is None:
-            weights = np.full(len(dists), 1 / len(dists))
-        elif len(weights) != len(dists):
-            raise RuntimeError('len(weights) does not equal len(dists)')
+            weights = np.full(len(components), 1 / len(components))
+        elif len(weights) != len(components):
+            raise RuntimeError('len(weights) does not equal len(components)')
         else:
             weights = weights.copy()
 
         # Set instance attributes
-        self.dists = dists.copy()
+        self.components = components.copy()
         self.params = params
         self.params_fix = params_fix
         self.weights = weights
@@ -192,8 +191,8 @@ class MixtureModel:
 
     def __repr__(self):
         pad = 13 * ' '
-        dists = [dist.name for dist in self.dists]
-        return (f'MixtureModel(dists={dists},\n'
+        components = [component.name for component in self.components]
+        return (f'MixtureModel(components={components},\n'
                 f'{pad}params={self.params},\n'
                 f'{pad}params_fix={self.params_fix},\n'
                 f'{pad}weights={self.weights},\n'
@@ -201,8 +200,8 @@ class MixtureModel:
 
     def clear(self):
         """Reset free parameters and weights of mixture model."""
-        self.params = [{} for _ in range(len(self.dists))]
-        self.weights = np.full(len(self.dists), 1 / len(self.dists))
+        self.params = [{} for _ in range(len(self.components))]
+        self.weights = np.full(len(self.components), 1 / len(self.components))
         self.converged = False
 
     def fit(self, data, max_iter=250, tol=1E-3, verbose=False):
@@ -238,25 +237,25 @@ class MixtureModel:
         # Initialize params, using temporary values to preserve originals in case of error
         weights_opt = self.weights.copy()
         params_opt = []
-        for dist, param, param_fix in zip(self.dists, self.params, self.params_fix):
+        for component, param, param_fix in zip(self.components, self.params, self.params_fix):
             sample = np.random.choice(data, max(1, int(len(data) * random())))  # Use random sample to initialize
-            cfe = estimate.cfes[dist.name]  # Get closed-form estimator
+            cfe = estimate.cfes[component.name]  # Get closed-form estimator
             param_init = {**cfe(sample, param_fix=param_fix), **param}  # Overwrite random initials with any provided initials
             params_opt.append(param_init)
 
         for i in range(1, max_iter + 1):
-            ll0 = _get_loglikelihood(data, self.dists, params_opt, self.params_fix, weights_opt)
+            ll0 = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt)
 
             # Expectation
-            expts = _get_posterior(data, self.dists, params_opt, self.params_fix, weights_opt)
+            expts = _get_posterior(data, self.components, params_opt, self.params_fix, weights_opt)
             weights_opt = expts.sum(axis=1) / expts.sum()
 
             # Maximization
-            for dist, param_opt, param_fix, expt in zip(self.dists, params_opt, self.params_fix, expts):
-                mle = estimate.mles[dist.name]  # Get MLE function
+            for component, param_opt, param_fix, expt in zip(self.components, params_opt, self.params_fix, expts):
+                mle = estimate.mles[component.name]  # Get MLE function
                 opt = mle(data, param_fix=param_fix, expt=expt, initial=param_opt)  # Get updated parameters
                 param_opt.update(opt)
-            ll = _get_loglikelihood(data, self.dists, params_opt, self.params_fix, weights_opt)
+            ll = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt)
 
             # Print output
             if verbose:
@@ -287,7 +286,7 @@ class MixtureModel:
         p: float
             Log-likelihood of data.
         """
-        return _get_loglikelihood(data, self.dists, self.params, self.params_fix, self.weights)
+        return _get_loglikelihood(data, self.components, self.params, self.params_fix, self.weights)
 
     def posterior(self, data):
         """Return array of posterior probabilities of data for each component of mixture model.
@@ -301,9 +300,9 @@ class MixtureModel:
         -------
         ps: ndarray
             Array of posterior probabilities of data for each component of mixture
-            model. Shape is (len(data), len(self.dists)).
+            model. Shape is (len(data), len(self.components)).
         """
-        return _get_posterior(data, self.dists, self.params, self.params_fix, self.weights)
+        return _get_posterior(data, self.components, self.params, self.params_fix, self.weights)
 
     def cdf(self, x, component='sum'):
         """Return cdf evaluated at x.
@@ -315,7 +314,7 @@ class MixtureModel:
         component: 'sum', 'all', or int
             If 'sum', the cdfs are summed across components. If 'all', the cdf
             of each component is returned as an ndarray with shape (len(x),
-            len(self.dists)). If component is an int, the cdf of the
+            len(self.components)). If component is an int, the cdf of the
             corresponding component is returned.
 
         Returns
@@ -328,15 +327,15 @@ class MixtureModel:
             raise ValueError('component is not "sum", "all" or int')
 
         if component == 'sum':
-            ps = _get_cdfstack(x, self.dists, self.params, self.params_fix, self.weights)
+            ps = _get_cdfstack(x, self.components, self.params, self.params_fix, self.weights)
             return ps.sum(axis=0)
         elif component == 'all':
-            ps = _get_cdfstack(x, self.dists, self.params, self.params_fix, self.weights)
+            ps = _get_cdfstack(x, self.components, self.params, self.params_fix, self.weights)
             return ps
         else:
-            model_params = zip(self.dists, self.params, self.params_fix, self.weights)
-            dist, param, param_fix, weight = list(model_params)[component]
-            ps = weight * dist.cdf(x, **param_fix, **param)
+            model_params = zip(self.components, self.params, self.params_fix, self.weights)
+            component, param, param_fix, weight = list(model_params)[component]
+            ps = weight * component.cdf(x, **param_fix, **param)
             return ps
 
     def pdf(self, x, component='sum'):
@@ -349,7 +348,7 @@ class MixtureModel:
         component: 'sum', 'all', or int
             If 'sum', the pdfs are summed across components. If 'all', the pdf
             of each component is returned as an ndarray with shape (len(x),
-            len(self.dists)). If component is an int, the pdf of the
+            len(self.components)). If component is an int, the pdf of the
             corresponding component is returned.
 
         Returns
@@ -362,13 +361,13 @@ class MixtureModel:
             raise ValueError('component is not "sum", "all" or int')
 
         if component is 'sum':
-            ps = _get_pdfstack(x, self.dists, self.params, self.params_fix, self.weights)
+            ps = _get_pdfstack(x, self.components, self.params, self.params_fix, self.weights)
             return ps.sum(axis=0)
         elif component == 'all':
-            ps = _get_pdfstack(x, self.dists, self.params, self.params_fix, self.weights)
+            ps = _get_pdfstack(x, self.components, self.params, self.params_fix, self.weights)
             return ps
         else:
-            model_params = zip(self.dists, self.params, self.params_fix, self.weights)
-            dist, param, param_fix, weight = list(model_params)[component]
-            ps = weight * dist.pdf(x, **param_fix, **param)
+            model_params = zip(self.components, self.params, self.params_fix, self.weights)
+            component, param, param_fix, weight = list(model_params)[component]
+            ps = weight * component.pdf(x, **param_fix, **param)
             return ps
