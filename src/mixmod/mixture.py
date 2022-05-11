@@ -171,7 +171,7 @@ class MixtureModel:
             raise RuntimeError('len(params_fix) does not equal len(components)')
 
         for param, param_fix in zip(params, params_fix):
-            if set(param) | set(param_fix):
+            if set(param) & set(param_fix):
                 raise RuntimeError('Corresponding dicts in params and params_fix define the same parameter')
 
         if weights is None:
@@ -194,7 +194,7 @@ class MixtureModel:
                 f'{pad}params={self.params},\n'
                 f'{pad}params_fix={self.params_fix},\n'
                 f'{pad}weights={self.weights},\n'
-                f'{pad}name={self.name})')
+                f'{pad}name=\'{self.name}\')')
 
     def clear(self):
         """Reset free parameters and weights of mixture model."""
@@ -322,8 +322,8 @@ class MixtureModel:
             cdf evaluated at data.
         """
         # Check arguments
-        if (component not in ['sum', 'all']) or isinstance(int, component):
-            raise ValueError('component is not "sum", "all" or int')
+        if (component not in ['sum', 'all']) and (not isinstance(component, int)):
+            raise ValueError('component is not "sum", "all", or int')
 
         if component == 'sum':
             ps = _get_cdfstack(x, self.components, self.params, self.params_fix, self.weights)
@@ -356,10 +356,10 @@ class MixtureModel:
             pdf evaluated at data.
         """
         # Check arguments
-        if (component not in ['sum', 'all']) or isinstance(int, component):
-            raise ValueError('component is not "sum", "all" or int')
+        if (component not in ['sum', 'all']) and (not isinstance(component, int)):
+            raise ValueError('component is not "sum", "all", or int')
 
-        if component is 'sum':
+        if component == 'sum':
             ps = _get_pdfstack(x, self.components, self.params, self.params_fix, self.weights)
             return ps.sum(axis=0)
         elif component == 'all':
