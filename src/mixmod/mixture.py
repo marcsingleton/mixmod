@@ -202,7 +202,7 @@ class MixtureModel:
         self.weights = [1 / len(self.components) for _ in range(len(self.components))]
         self.converged = False
 
-    def fit(self, data, tol=1E-3, maxiter=250):
+    def fit(self, data, tol=1E-3, maxiter=250, verbose=False):
         """Fit the free parameters of the mixture model with EM algorithm.
 
         Only the "free" parameters are fit. Any parameters in the params_fix
@@ -225,6 +225,8 @@ class MixtureModel:
             than tol between subsequent iterations.
         maxiter: int
             Maximum number of iterations. Must be at least 1.
+        verbose: bool
+            Prints log-likelihood at each iteration if True.
 
         Returns
         -------
@@ -260,11 +262,20 @@ class MixtureModel:
                 param_opt.update(opt)
             ll = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt)
 
+            # Print output
+            if verbose:
+                print(f'Step {i} / {maxiter}')
+                print(f'    Log-likelihood: {ll}')
+                print(f'    Delta: {ll0-ll}')
+                print()
+
             # Test numerical exception then convergence
             if np.isnan(ll) or np.isinf(ll):
                 break
             if abs(ll - ll0) < tol:
                 self.converged = True
+                if verbose:
+                    print(f'Converged reached with log-likelihood {ll} after {i} steps.')
                 break
 
         self.params = params_opt
