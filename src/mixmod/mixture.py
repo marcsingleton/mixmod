@@ -275,7 +275,7 @@ class MixtureModel:
             if abs(ll - ll0) < tol:
                 self.converged = True
                 if verbose:
-                    print(f'Converged reached with log-likelihood {ll} after {i} steps.')
+                    print(f'Convergence reached with log-likelihood {ll} after {i} steps.')
                 break
 
         self.params = params_opt
