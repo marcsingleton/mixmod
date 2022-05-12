@@ -202,25 +202,29 @@ class MixtureModel:
         self.weights = [1 / len(self.components) for _ in range(len(self.components))]
         self.converged = False
 
-    def fit(self, data, max_iter=250, tol=1E-3, verbose=False):
+    def fit(self, data, tol=1E-3, maxiter=250):
         """Fit the free parameters of the mixture model with EM algorithm.
 
         Only the "free" parameters are fit. Any parameters in the params_fix
         dicts are not changed.
 
         Parameters given in params dicts are used as initial estimates.
+        Otherwise initial estimates are calculated from the data.
+
+        If the log-likelihood is ever NaN or infinite, iteration stops. No
+        warning or error is raised, but the converged attribute is not set to
+        True. If the iteration did not converge and the number of iterations
+        is not equal to maxiter, then a numerical exception occurred.
 
         Parameters
         ----------
         data: 1-D ndarray
             Data to fit mixture model.
-        max_iter: int
-            Maximum number of iterations. Must be at least 1.
         tol: positive int or float
             Optimization stops if the difference between log-likelihoods is less
             than tol between subsequent iterations.
-        verbose: bool
-            Prints log-likelihood at each iteration if True.
+        maxiter: int
+            Maximum number of iterations. Must be at least 1.
 
         Returns
         -------
@@ -229,7 +233,7 @@ class MixtureModel:
             the final log-likelihood.
         """
         # Check arguments
-        if max_iter < 1:
+        if maxiter < 1:
             raise ValueError('max_iter must be at least 1')
         if tol <= 0:
             raise ValueError('tol must be positive')
@@ -242,7 +246,7 @@ class MixtureModel:
             param_init = {**cfe(data, param_fix=param_fix), **param}  # Overwrite random initials with any provided initials
             params_opt.append(param_init)
 
-        for i in range(1, max_iter + 1):
+        for i in range(1, maxiter + 1):
             ll0 = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt)
 
             # Expectation
@@ -255,10 +259,6 @@ class MixtureModel:
                 opt = mle(data, param_fix=param_fix, expt=expt, initial=param_opt)  # Get updated parameters
                 param_opt.update(opt)
             ll = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt)
-
-            # Print output
-            if verbose:
-                print(i, ll, sep=': ')
 
             # Test numerical exception then convergence
             if np.isnan(ll) or np.isinf(ll):
