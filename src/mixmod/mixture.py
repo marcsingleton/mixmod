@@ -157,6 +157,24 @@ class MixtureModel:
         None.
     name: str
         Name of mixture model for display when printing.
+
+    Attributes
+    ----------
+    components
+    params
+    weights
+    name
+    converged: bool
+        If call to fit successfully converged.
+
+    Methods
+    -------
+    clear
+    fit
+    loglikelihood
+    posterior
+    cdf
+    pdf
     """
     def __init__(self, components, params=None, params_fix=None, weights=None, name='mixture'):
         # Check arguments
