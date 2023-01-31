@@ -49,7 +49,8 @@ def create_gamma_shape(data, expt=None):
 
 
 # Maximum likelihood estimators
-def mle_expon(data, param_fix={}, expt=None, **kwargs):
+def mle_expon(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt
     ests = {}
 
@@ -63,7 +64,8 @@ def mle_expon(data, param_fix={}, expt=None, **kwargs):
     return ests
 
 
-def mle_fisk(data, param_fix={}, expt=None, initial=None):
+def mle_fisk(data, param_fix=None, expt=None, initial=None):
+    param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt
     initial = mm_fisk(data) if initial is None else initial
     ests = {}
@@ -85,7 +87,8 @@ def mle_fisk(data, param_fix={}, expt=None, initial=None):
     return ests
 
 
-def mle_gamma(data, param_fix={}, expt=None, initial=None):
+def mle_gamma(data, param_fix=None, expt=None, initial=None):
+    param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt
     initial = mm_gamma(data) if initial is None else initial
     ests = {}
@@ -115,7 +118,8 @@ def mle_gamma(data, param_fix={}, expt=None, initial=None):
     return ests
 
 
-def mle_laplace(data, param_fix={}, expt=None, **kwargs):
+def mle_laplace(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt[data.argsort()]  # Sort expt with data
     data = np.sort(data)  # Re-assign using np.sort() to prevent in-place sort
     ests = {}
@@ -148,7 +152,8 @@ def mle_laplace(data, param_fix={}, expt=None, **kwargs):
     return ests
 
 
-def mle_levy(data, param_fix={}, expt=None, **kwargs):
+def mle_levy(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt
     ests = {}
 
@@ -162,7 +167,8 @@ def mle_levy(data, param_fix={}, expt=None, **kwargs):
     return ests
 
 
-def mle_lognorm(data, param_fix={}, expt=None, **kwargs):
+def mle_lognorm(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt
     ests = {}
 
@@ -185,7 +191,8 @@ def mle_lognorm(data, param_fix={}, expt=None, **kwargs):
     return ests
 
 
-def mle_norm(data, param_fix={}, expt=None, **kwargs):
+def mle_norm(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt
     ests = {}
 
@@ -208,7 +215,8 @@ def mle_norm(data, param_fix={}, expt=None, **kwargs):
     return ests
 
 
-def mle_pareto(data, param_fix={}, expt=None, **kwargs):
+def mle_pareto(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt
     ests = {}
 
@@ -229,7 +237,8 @@ def mle_pareto(data, param_fix={}, expt=None, **kwargs):
     return ests
 
 
-def mle_uniform(data, param_fix={}, **kwargs):
+def mle_uniform(data, param_fix=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
     ests = {}
 
     # Loc
@@ -248,7 +257,8 @@ def mle_uniform(data, param_fix={}, **kwargs):
 
 
 # Method of moments estimators (for providing initial values for MLEs without closed forms)
-def mm_fisk(data, param_fix={}, expt=None, **kwargs):
+def mm_fisk(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt
     ests = {}
 
@@ -266,7 +276,8 @@ def mm_fisk(data, param_fix={}, expt=None, **kwargs):
     return ests
 
 
-def mm_gamma(data, param_fix={}, expt=None, **kwargs):
+def mm_gamma(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt
     ests = {}
 
@@ -283,7 +294,8 @@ def mm_gamma(data, param_fix={}, expt=None, **kwargs):
     return ests
 
 
-def mm_lognorm(data, param_fix={}, expt=None, **kwargs):
+def mm_lognorm(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt
     ests = {}
 
