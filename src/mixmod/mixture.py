@@ -4,7 +4,7 @@ import numpy as np
 from . import estimators
 
 
-def _get_loglikelihood(data, components, params, params_fix, weights):
+def _get_loglikelihood(data, components, params, params_fix, weights, pf_attr):
     """Return log-likelihood of data according to mixture model.
 
     Parameters
@@ -19,7 +19,9 @@ def _get_loglikelihood(data, components, params, params_fix, weights):
         Fixed parameters of components of mixture model.
     weights: list of floats
         Weights of components of mixture model.
-
+    pf_attr: str
+        Attribute for probability function.
+    
     Returns
     -------
     p: float
@@ -28,11 +30,12 @@ def _get_loglikelihood(data, components, params, params_fix, weights):
     p = 0
     model_params = zip(components, params, params_fix, weights)
     for component, param, param_fix, weight in model_params:
-        p += weight * component.pdf(data, **param, **param_fix,)  # This step is not log b/c we are summing the contribution of each component
+        pf = getattr(component, pf_attr)
+        p += weight * pf(data, **param, **param_fix,)  # This step is not log b/c we are summing the contribution of each component
     return np.log(p).sum()
 
 
-def _get_posterior(data, components, params, params_fix, weights):
+def _get_posterior(data, components, params, params_fix, weights, pf_attr):
     """Return array of posterior probabilities of data for each component of mixture model.
 
     Parameters
@@ -47,6 +50,8 @@ def _get_posterior(data, components, params, params_fix, weights):
         Fixed parameters of components of mixture model.
     weights: list of floats
         Weights of components of mixture model.
+    pf_attr: str
+        Attribute for probability function.
 
     Returns
     -------
@@ -54,7 +59,12 @@ def _get_posterior(data, components, params, params_fix, weights):
         Array of posterior probabilities of data for each component of mixture
         model. Shape is (len(data), len(components)).
     """
-    ps = _get_pdfstack(data, components, params, params_fix, weights)
+    if pf_attr == 'pdf':
+        ps = _get_pdfstack(data, components, params, params_fix, weights)
+    elif pf_attr == 'pmf':
+        ps = _get_pmfstack(data, components, params, params_fix, weights)
+    else:
+        raise RuntimeError('pf_attr is not "pdf" or "pmf"')
     return ps / ps.sum(axis=0)  # Normalize stack to yield posterior
 
 
@@ -111,7 +121,34 @@ def _get_pdfstack(data, components, params, params_fix, weights):
     ps = [weight * component.pdf(data, **param, **param_fix) for component, param, param_fix, weight in model_params]
     return np.stack(ps, axis=0)
 
-    
+
+def _get_pmfstack(data, components, params, params_fix, weights):
+    """Return array of pdfs evaluated at data for each component of mixture model.
+
+    Parameters
+    ----------
+    data: 1-D ndarray
+        Values at which to evaluate components of mixture model.
+    components: list of rv_discrete instances
+        Components of mixture model.
+    params: list of dicts
+        Free parameters of components of mixture model.
+    params_fix: list of dicts
+        Fixed parameters of components of mixture model.
+    weights: list of floats
+        Weights of components of mixture model.
+
+    Returns
+    -------
+    ps: ndarray
+        Array of pdfs evaluated at data for each component of mixture model.
+        Shape is (len(data), len(components)).
+    """
+    model_params = zip(components, params, params_fix, weights)
+    ps = [weight * component.pmf(data, **param, **param_fix) for component, param, param_fix, weight in model_params]
+    return np.stack(ps, axis=0)
+
+
 class MixtureModel:
     """Class for performing calculations with mixture models.
 
@@ -136,13 +173,16 @@ class MixtureModel:
 
     Though the components are effectively instances of SciPy rvs as defined
     in its stats module, this condition is not formally checked. As long as
-    each component implements a pdf and cdf method, most of the defined
-    methods will execute correctly. The major exception is the fit method.
-    First, it requires the components have name attributes since they are
-    used to select the correct estimator functions. These estimator functions
-    also use the parameter names as defined in the SciPy stats module to set
-    the keys in each param dict. Thus, the fit method is only implemented for
-    the distributions with estimators defined in estimators.py.
+    each component implements a pdf/pmf and cdf method, most of the defined
+    methods will execute correctly. Mixtures of continuous and discrete rvs is
+    disallowed, and this condition is checked during initialization. 
+    
+    The major exception is the fit method, which requires the components have
+    name attributes since they are used to select the correct estimator
+    functions. These estimator functions use the parameter names as defined in
+    the SciPy stats module to set the keys in each param dict. Thus, the fit
+    method is only implemented for the distributions with estimators defined in
+    estimators.py.
 
     Parameters
     ----------
@@ -175,6 +215,7 @@ class MixtureModel:
     posterior
     cdf
     pdf
+    pmf
     """
     def __init__(self, components, params=None, params_fix=None, weights=None, name='mixture'):
         # Check arguments
@@ -196,6 +237,13 @@ class MixtureModel:
             weights = [1 / len(components) for _ in components]
         elif len(weights) != len(components):
             raise RuntimeError('len(weights) does not equal len(components)')
+        
+        if all([hasattr(component, 'pdf') for component in components]):
+            pf_attr = 'pdf'
+        elif all([hasattr(component, 'pmf') for component in components]):
+            pf_attr = 'pmf'
+        else:
+            raise RuntimeError('Components are not either all continuous or discrete')
 
         # Set instance attributes
         self.components = components
@@ -204,6 +252,7 @@ class MixtureModel:
         self.weights = weights
         self.name = name
         self.converged = False
+        self._pf_attr = pf_attr
 
     def __repr__(self):
         pad = 13 * ' '
@@ -268,10 +317,10 @@ class MixtureModel:
             params_opt.append(param_init)
 
         for numiter in range(1, maxiter + 1):
-            ll0 = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt)
+            ll0 = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt, self._pf_attr)
 
             # Expectation
-            expts = _get_posterior(data, self.components, params_opt, self.params_fix, weights_opt)
+            expts = _get_posterior(data, self.components, params_opt, self.params_fix, weights_opt, self._pf_attr)
             weights_opt = expts.sum(axis=1) / expts.sum()
 
             # Maximization
@@ -386,6 +435,8 @@ class MixtureModel:
             pdf evaluated at data.
         """
         # Check arguments
+        if self._pf_attr != 'pdf':
+            raise RuntimeError('Components are discrete')
         if (component not in ['sum', 'all']) and (not isinstance(component, int)):
             raise ValueError('component is not "sum", "all", or int')
 
@@ -394,6 +445,42 @@ class MixtureModel:
             return ps.sum(axis=0)
         elif component == 'all':
             ps = _get_pdfstack(x, self.components, self.params, self.params_fix, self.weights)
+            return ps
+        else:
+            model_params = zip(self.components, self.params, self.params_fix, self.weights)
+            component, param, param_fix, weight = list(model_params)[component]
+            ps = weight * component.pdf(x, **param, **param_fix)
+            return ps
+
+    def pmf(self, x, component='sum'):
+        """Return pmf evaluated at x.
+
+        Parameters
+        ----------
+        x: 1-D ndarray
+            Values at which to evaluate components of mixture model.
+        component: 'sum', 'all', or int
+            If 'sum', the pdfs are summed across components. If 'all', the pdf
+            of each component is returned as an ndarray with shape (len(x),
+            len(self.components)). If component is an int, the pdf of the
+            corresponding component is returned.
+
+        Returns
+        -------
+        ps: ndarray
+            pdf evaluated at data.
+        """
+        # Check arguments
+        if self._pf_attr != 'pmf':
+            raise RuntimeError('Components are continuous')
+        if (component not in ['sum', 'all']) and (not isinstance(component, int)):
+            raise ValueError('component is not "sum", "all", or int')
+
+        if component == 'sum':
+            ps = _get_pmfstack(x, self.components, self.params, self.params_fix, self.weights)
+            return ps.sum(axis=0)
+        elif component == 'all':
+            ps = _get_pmfstack(x, self.components, self.params, self.params_fix, self.weights)
             return ps
         else:
             model_params = zip(self.components, self.params, self.params_fix, self.weights)
