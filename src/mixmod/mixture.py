@@ -28,7 +28,7 @@ def _get_loglikelihood(data, components, params, params_fix, weights):
     p = 0
     model_params = zip(components, params, params_fix, weights)
     for component, param, param_fix, weight in model_params:
-        p += weight * component.pdf(data, **param_fix, **param)  # This step is not log b/c we are summing the contribution of each component
+        p += weight * component.pdf(data, **param, **param_fix,)  # This step is not log b/c we are summing the contribution of each component
     return np.log(p).sum()
 
 
@@ -111,7 +111,7 @@ def _get_pdfstack(data, components, params, params_fix, weights):
     ps = [weight * component.pdf(data, **param, **param_fix) for component, param, param_fix, weight in model_params]
     return np.stack(ps, axis=0)
 
-
+    
 class MixtureModel:
     """Class for performing calculations with mixture models.
 
@@ -364,7 +364,7 @@ class MixtureModel:
         else:
             model_params = zip(self.components, self.params, self.params_fix, self.weights)
             component, param, param_fix, weight = list(model_params)[component]
-            ps = weight * component.cdf(x, **param_fix, **param)
+            ps = weight * component.cdf(x, **param, **param_fix)
             return ps
 
     def pdf(self, x, component='sum'):
@@ -398,5 +398,5 @@ class MixtureModel:
         else:
             model_params = zip(self.components, self.params, self.params_fix, self.weights)
             component, param, param_fix, weight = list(model_params)[component]
-            ps = weight * component.pdf(x, **param_fix, **param)
+            ps = weight * component.pdf(x, **param, **param_fix)
             return ps
