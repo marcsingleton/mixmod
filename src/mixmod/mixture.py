@@ -11,7 +11,7 @@ def _get_loglikelihood(data, components, params, params_fix, weights):
     ----------
     data: 1-D ndarray
         Values at which to evaluate components of mixture model.
-    components: list of rv_continuous instances
+    components: list of SciPy rv instances
         Components of mixture model.
     params: list of dicts
         Free parameters of components of mixture model.
@@ -39,7 +39,7 @@ def _get_posterior(data, components, params, params_fix, weights):
     ----------
     data: 1-D ndarray
         Values at which to evaluate components of mixture model.
-    components: list of rv_continuous instances
+    components: list of SciPy rv instances
         Components of mixture model.
     params: list of dicts
         Free parameters of components of mixture model.
@@ -65,7 +65,7 @@ def _get_cdfstack(data, components, params, params_fix, weights):
     ----------
     data: 1-D ndarray
         Values at which to evaluate components of mixture model.
-    components: list of rv_continuous instances
+    components: list of SciPy rv instances
         Components of mixture model.
     params: list of dicts
         Free parameters of components of mixture model.
@@ -134,19 +134,19 @@ class MixtureModel:
     A RuntimeError is raised if the same parameter is defined in corresponding
     params and params_fix dicts.
 
-    Though the components are effectively instances of rv_continuous as defined
-    in the scipy stats module, this condition is not formally checked. As long
-    as each component implements a pdf and cdf method, most of the defined
+    Though the components are effectively instances of SciPy rvs as defined
+    in its stats module, this condition is not formally checked. As long as
+    each component implements a pdf and cdf method, most of the defined
     methods will execute correctly. The major exception is the fit method.
-    First, it requires the components have name attributes since they are used
-    to select the correct estimator functions. These estimator functions also
-    use the parameter names as defined in the scipy stats module to set the
-    keys in each param dict. Thus, the fit method is only implemented for the
-    distributions with estimators defined in estimators.py.
+    First, it requires the components have name attributes since they are
+    used to select the correct estimator functions. These estimator functions
+    also use the parameter names as defined in the SciPy stats module to set
+    the keys in each param dict. Thus, the fit method is only implemented for
+    the distributions with estimators defined in estimators.py.
 
     Parameters
     ----------
-    components: list of rv_continuous instances
+    components: list of SciPy rv instances
         Components of mixture model.
     params: list of dicts
         Initial values for the free parameters of components of mixture model.
@@ -179,12 +179,12 @@ class MixtureModel:
     def __init__(self, components, params=None, params_fix=None, weights=None, name='mixture'):
         # Check arguments
         if params is None:
-            params = [{} for _ in range(len(components))]
+            params = [{} for _ in components]
         elif len(params) != len(components):
             raise RuntimeError('len(params) does not equal len(components)')
 
         if params_fix is None:
-            params_fix = [{} for _ in range(len(components))]
+            params_fix = [{} for _ in components]
         elif len(params_fix) != len(components):
             raise RuntimeError('len(params_fix) does not equal len(components)')
 
@@ -193,7 +193,7 @@ class MixtureModel:
                 raise RuntimeError('Corresponding dicts in params and params_fix define the same parameter')
 
         if weights is None:
-            weights = [1 / len(components) for _ in range(len(components))]
+            weights = [1 / len(components) for _ in components]
         elif len(weights) != len(components):
             raise RuntimeError('len(weights) does not equal len(components)')
 
@@ -216,8 +216,8 @@ class MixtureModel:
 
     def clear(self):
         """Reset free parameters and weights of mixture model."""
-        self.params = [{} for _ in range(len(self.components))]
-        self.weights = [1 / len(self.components) for _ in range(len(self.components))]
+        self.params = [{} for _ in self.components]
+        self.weights = [1 / len(self.components) for _ in self.components]
         self.converged = False
 
     def fit(self, data, tol=1E-3, maxiter=250, verbose=False):
@@ -227,7 +227,7 @@ class MixtureModel:
         dicts are not changed.
 
         Parameters given in params dicts are used as initial estimates.
-        Otherwise initial estimates are calculated from the data.
+        Otherwise, initial estimates are calculated from the data.
 
         If the log-likelihood is ever NaN or infinite, iteration stops. No
         warning or error is raised, but the converged attribute is not set to
@@ -248,9 +248,10 @@ class MixtureModel:
 
         Returns
         -------
-        i, ll: (int, float)
-            The number of iterations before a stop conditions was reached, and
-            the final log-likelihood.
+        numiter: int
+            The number of iterations before a stop conditions was reached.
+        ll: float
+            The final log-likelihood.
         """
         # Check arguments
         if maxiter < 1:
@@ -266,7 +267,7 @@ class MixtureModel:
             param_init = {**cfe(data, param_fix=param_fix), **param}  # Overwrite random initials with any provided initials
             params_opt.append(param_init)
 
-        for i in range(1, maxiter + 1):
+        for numiter in range(1, maxiter + 1):
             ll0 = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt)
 
             # Expectation
@@ -299,7 +300,7 @@ class MixtureModel:
         self.params = params_opt
         self.weights = weights_opt.tolist()
 
-        return i, ll
+        return numiter, ll
 
     def loglikelihood(self, data):
         """Return log-likelihood of data according to mixture model.
