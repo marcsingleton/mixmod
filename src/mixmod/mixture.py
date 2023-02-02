@@ -316,9 +316,8 @@ class MixtureModel:
             param_init = {**cfe(data, param_fix=param_fix), **param}  # Overwrite random initials with any provided initials
             params_opt.append(param_init)
 
+        ll0 = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt, self._pf_attr)
         for numiter in range(1, maxiter + 1):
-            ll0 = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt, self._pf_attr)
-
             # Expectation
             expts = _get_posterior(data, self.components, params_opt, self.params_fix, weights_opt, self._pf_attr)
             weights_opt = expts.sum(axis=1) / expts.sum()
@@ -345,6 +344,7 @@ class MixtureModel:
                 if verbose:
                     print(f'Convergence reached with log-likelihood {ll} after {i} steps.')
                 break
+            ll0 = ll
 
         self.params = params_opt
         self.weights = weights_opt.tolist()
