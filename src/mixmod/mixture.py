@@ -21,7 +21,7 @@ def _get_loglikelihood(data, components, params, params_fix, weights, pf_attr):
         Weights of components of mixture model.
     pf_attr: str
         Attribute for probability function.
-    
+
     Returns
     -------
     p: float
@@ -175,8 +175,8 @@ class MixtureModel:
     in its stats module, this condition is not formally checked. As long as
     each component implements a pdf/pmf and cdf method, most of the defined
     methods will execute correctly. Mixtures of continuous and discrete rvs is
-    disallowed, and this condition is checked during initialization. 
-    
+    disallowed, and this condition is checked during initialization.
+
     The major exception is the fit method, which requires the components have
     name attributes since they are used to select the correct estimator
     functions. These estimator functions use the parameter names as defined in
@@ -237,7 +237,7 @@ class MixtureModel:
             weights = [1 / len(components) for _ in components]
         elif len(weights) != len(components):
             raise RuntimeError('len(weights) does not equal len(components)')
-        
+
         if all([hasattr(component, 'pdf') for component in components]):
             pf_attr = 'pdf'
         elif all([hasattr(component, 'pmf') for component in components]):
@@ -328,7 +328,7 @@ class MixtureModel:
                 mle = estimators.mles[component.name]  # Get MLE function
                 opt = mle(data, param_fix=param_fix, expt=expt, initial=param_opt)  # Get updated parameters
                 param_opt.update(opt)
-            ll = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt)
+            ll = _get_loglikelihood(data, self.components, params_opt, self.params_fix, weights_opt, self._pf_attr)
 
             # Print output
             if verbose:
@@ -364,7 +364,7 @@ class MixtureModel:
         p: float
             Log-likelihood of data.
         """
-        return _get_loglikelihood(data, self.components, self.params, self.params_fix, self.weights)
+        return _get_loglikelihood(data, self.components, self.params, self.params_fix, self.weights, self._pf_attr)
 
     def posterior(self, data):
         """Return array of posterior probabilities of data for each component of mixture model.
@@ -380,7 +380,7 @@ class MixtureModel:
             Array of posterior probabilities of data for each component of mixture
             model. Shape is (len(data), len(self.components)).
         """
-        return _get_posterior(data, self.components, self.params, self.params_fix, self.weights)
+        return _get_posterior(data, self.components, self.params, self.params_fix, self.weights, self._pf_attr)
 
     def cdf(self, x, component='sum'):
         """Return cdf evaluated at x.
