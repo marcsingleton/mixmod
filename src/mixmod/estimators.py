@@ -49,6 +49,53 @@ def create_gamma_shape(data, expt=None):
 
 
 # Maximum likelihood estimators
+def mle_binom(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
+    expt = np.full(len(data), 1) if expt is None else expt
+    ests = {}
+
+    # Shape n
+    if 'n' not in param_fix:
+        raise RuntimeError('n must be given as fixed parameter')
+
+    # Shape p
+    if 'p' not in param_fix:
+        e = expt.sum()
+        ed = (expt * data).sum()
+        p = ed / (param_fix['n'] * e)
+        ests['p'] = p
+
+    return ests
+
+
+def mle_discrete(data, param_fix=None, expt=None, **kwargs):
+    # This MLE is not compatible with the rv_discrete class in the SciPy stats
+    # module. That class attempts to broadcast its inputs to the shape of its
+    # parameters, which makes it incompatible with parameter vectors like the
+    # xs and ps needed to specify an arbitrary finite discrete distribution.
+    # An implementation of a compatible discrete distribution is given in the
+    # tutorial.
+    param_fix = {} if param_fix is None else param_fix
+    expt = np.full(len(data), 1) if expt is None else expt
+    ests = {}
+
+    # Shape xk
+    if 'xs' not in param_fix:
+        raise RuntimeError('xs must be given as fixed parameter')
+
+    # Shape pk
+    if 'ps' not in param_fix:
+        ps = []
+        e = expt.sum()
+        for x in param_fix['xs']:
+            ed = (expt * (data == x)).sum()
+            p = ed / e
+            ps.append(p)
+        ests['ps'] = ps
+
+    return ests
+
+
 def mle_expon(data, param_fix=None, expt=None, **kwargs):
     param_fix = {} if param_fix is None else param_fix
     expt = np.full(len(data), 1) if expt is None else expt
@@ -114,6 +161,21 @@ def mle_gamma(data, param_fix=None, expt=None, initial=None):
     if 'scale' not in param_fix:
         scale = (expt * data).sum() / (a * expt.sum())
         ests['scale'] = scale
+
+    return ests
+
+
+def mle_geom(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
+    expt = np.full(len(data), 1) if expt is None else expt
+    ests = {}
+
+    # Shape
+    if 'p' not in param_fix:
+        e = expt.sum()
+        ed = (expt * data).sum()
+        p = e / ed
+        ests['p'] = p
 
     return ests
 
@@ -237,6 +299,21 @@ def mle_pareto(data, param_fix=None, expt=None, **kwargs):
     return ests
 
 
+def mle_poisson(data, param_fix=None, expt=None, **kwargs):
+    param_fix = {} if param_fix is None else param_fix
+    expt = np.full(len(data), 1) if expt is None else expt
+    ests = {}
+
+    # Shape
+    if 'mu' not in param_fix:
+        e = expt.sum()
+        ed = (expt * data).sum()
+        mu = ed / e
+        ests['mu'] = mu
+
+    return ests
+
+
 def mle_uniform(data, param_fix=None, **kwargs):
     param_fix = {} if param_fix is None else param_fix
     ests = {}
@@ -317,14 +394,18 @@ def mm_lognorm(data, param_fix=None, expt=None, **kwargs):
 
 
 # MLEs and MMEs for access by distribution name
-mles = {'expon': mle_expon,
+mles = {'binom': mle_binom,
+        'discrete': mle_discrete,
+        'expon': mle_expon,
         'fisk': mle_fisk,
         'gamma': mle_gamma,
+        'geom': mle_geom,
         'laplace': mle_laplace,
         'levy': mle_levy,
         'lognorm': mle_lognorm,
         'norm': mle_norm,
         'pareto': mle_pareto,
+        'poisson': mle_poisson,
         'uniform': mle_uniform}
 
 mmes = {'fisk': mm_fisk,
